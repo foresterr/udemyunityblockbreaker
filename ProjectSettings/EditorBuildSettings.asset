@@ -4,4 +4,38 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/_Scenes/Screen_start.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_01.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_02.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_03.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_04.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_05.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_06.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_07.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_08.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_09.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_10.unity
+  - enabled: 1
+    path: Assets/_Scenes/Level_12.unity
+  - enabled: 1
+    path: Assets/_Scenes/Screen_win.unity
+  - enabled: 1
+    path: Assets/_Scenes/Screen_lose.unity
+  - enabled: 1
+    path: Assets/_Scenes/Screen_help.unity
+  - enabled: 1
+    path: Assets/_Scenes/Screen_credits.unity
+  - enabled: 0
+    path: Assets/_Scenes/Level_test.unity
