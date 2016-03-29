@@ -18,9 +18,9 @@ public class Paddle : MonoBehaviour {
 
     private PaddleType currentPaddle = PaddleType.Normal;
     private IEnumerator scheduledApplyPaddleType;
-    private float bonusTimer;
+    private bool paddleBonusActive;
+    private bool bonusTimerRunning;
     private bool interruptBonusTimer;
-    private bool isAnimPlaying;
 
     public bool HasBall {
         get { return gluedBall; }
@@ -76,76 +76,69 @@ public class Paddle : MonoBehaviour {
                 StartCoroutine(RebuildShield());
                 break;
         }
-        if (scheduledApplyPaddleType != null && !isAnimPlaying) {
-            //ignore capsule pickups that change paddle type mid - animation
-            StartCoroutine(scheduledApplyPaddleType);
-        }
     }
 
     private IEnumerator ApplyPaddleType(PaddleType paddle, float duration, Color color, Sprite[] anim) {
         scheduledApplyPaddleType = null;
-        //print("Entering bonus coroutine, interrupt status is "+interruptBonusTimer);
-        if (currentPaddle == paddle) {
-            bonusTimer = duration;
-            yield break;
+        paddleBonusActive = true;
+        while (currentPaddle != PaddleType.Normal) {
+            yield return null;
         }
-        if (currentPaddle != PaddleType.Normal) {
-            interruptBonusTimer = true;
-            while (currentPaddle != PaddleType.Normal) {
-                yield return null;
-            }
-        }
+        currentPaddle = paddle;
         if (anim != null) {
             yield return StartCoroutine(PlayBonusAnim(anim, 0.3f, reverse: false));
         }
         GetComponent<SpriteRenderer>().color = color;
-        currentPaddle = paddle;
-        bonusTimer = duration;
-        StartCoroutine(StartBonusClock(duration));
-        while (bonusTimer > 0) {
-            yield return null;
-        }
+        yield return StartCoroutine(StartBonusClock(duration));
         if (anim != null) {
             yield return StartCoroutine(PlayBonusAnim(anim, 0.3f, reverse: true));
         }
         GetComponent<SpriteRenderer>().color = Color.white;
         currentPaddle = PaddleType.Normal;
-    }
-
-    private IEnumerator StartBonusClock(float duration) {
-        //print("Starting bonus timer with duration "+duration);
-        while (bonusTimer >= 0) {
-            if (interruptBonusTimer) {
-                print("Bonus interrupted");
-                bonusTimer = 0;
-                interruptBonusTimer = false;
-                yield break;
-            }
-            bonusTimer -= Time.deltaTime;
-            yield return null;
+        //print("scheduled next bonus: "+scheduledApplyPaddleType);
+        if (scheduledApplyPaddleType != null) {
+            //print("Daisy chaining next bonus");
+            StartCoroutine(scheduledApplyPaddleType); //daisy chain last picked (during the current bonus)
+        } else {
+            paddleBonusActive = false;
         }
     }
 
+    private IEnumerator StartBonusClock(float duration) {
+        bonusTimerRunning = true;
+        //print("Starting bonus timer with duration "+duration);
+        while (duration >= 0) {
+            if (interruptBonusTimer) {
+                //print("Bonus interrupted");
+                interruptBonusTimer = false;
+                bonusTimerRunning = false;
+                yield break;
+            }
+            duration -= Time.deltaTime;
+            yield return null;
+        }
+        bonusTimerRunning = false;
+    }
+
     public void InterruptBonus() {
+        scheduledApplyPaddleType = null;
         interruptBonusTimer = true;
     }
 
     private IEnumerator PlayBonusAnim(Sprite[] anim, float duration, bool reverse) {
-        isAnimPlaying = true;
         var s = GetComponent<SpriteRenderer>();
         for (int i = 0; i < anim.Length; i++) {
             s.sprite = anim[reverse ? anim.Length - 1 - i : i];
             GetComponent<BoxCollider2D>().size = s.sprite.bounds.size;
-            yield return new WaitForSeconds(duration / anim.Length);
+            yield return new WaitForSeconds(duration/anim.Length);
         }
-        isAnimPlaying = false;
     }
 
     private IEnumerator RebuildShield() {
         for (int i = 0; i < guardBlocks.Length; i++) {
             if (guardBlocks[i] == null) {
                 var width = GuardBlockPrefab.GetComponent<SpriteRenderer>().bounds.size.x;
-                var pos = new Vector3(4 + width / 2 + i * width, 4);
+                var pos = new Vector3(4 + width/2 + i*width, 4);
                 guardBlocks[i] = Instantiate(GuardBlockPrefab, pos, Quaternion.identity) as GameObject;
             }
             yield return new WaitForSeconds(0.05f);
@@ -173,13 +166,13 @@ public class Paddle : MonoBehaviour {
 
     private void Deflect(Collision2D coll) {
         var vm = coll.rigidbody.velocity.magnitude;
-        var maxDist = 0.99f * GetComponent<Collider2D>().bounds.extents.x;
+        var maxDist = 0.99f*GetComponent<Collider2D>().bounds.extents.x;
         var xDist = transform.position.x - coll.transform.position.x;
         var yDist = transform.position.y - coll.transform.position.y;
         if (Mathf.Abs(xDist) <= maxDist && yDist < 2) {
-            var angle = Mathf.Clamp(xDist / maxDist * 90 + 90, 10, 170);
+            var angle = Mathf.Clamp(xDist/maxDist*90 + 90, 10, 170);
             //always deflect at at least 10 deg, lower angles are boring
-            var newV = new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad));
+            var newV = new Vector2(Mathf.Cos(angle*Mathf.Deg2Rad), Mathf.Sin(angle*Mathf.Deg2Rad));
             newV *= vm;
             coll.rigidbody.velocity = newV;
         }
@@ -196,12 +189,17 @@ public class Paddle : MonoBehaviour {
     private void Update() {
         if (levelMgr.Paused) return;
         PositionOnMouseX(4);
-        if (!HasBall) {
-            if (Ball.BallsOnScreen == 0) {
-                SpawnBall();
-            } else if (currentPaddle == PaddleType.Launcher && Ball.BallsOnScreen < 13) {
-                SpawnBall();
+        if (scheduledApplyPaddleType != null) {
+            if (bonusTimerRunning) {
+                //print("Asking current bonus to end");
+                interruptBonusTimer = true;
+            } else if (!paddleBonusActive){
+                //print("Starting a completely new bonus");
+                StartCoroutine(scheduledApplyPaddleType);
             }
+        }
+        if (!HasBall && (Ball.BallsOnScreen == 0 || currentPaddle == PaddleType.Launcher && Ball.BallsOnScreen < 13)) {
+            SpawnBall();
         }
         var aimLine = GetComponentInChildren<AimLine>();
         if (Input.GetMouseButton(0) && currentPaddle != PaddleType.Launcher && HasBall) {
@@ -213,9 +211,9 @@ public class Paddle : MonoBehaviour {
                 angle = aimLine.CurrentAngle;
             } else {
                 int angle2 = Random.Range(-45, 46);
-                angle = Quaternion.AngleAxis(angle2, Vector3.forward) * Vector2.up;
+                angle = Quaternion.AngleAxis(angle2, Vector3.forward)*Vector2.up;
             }
-            gluedBall.GetComponent<Ball>().Launch(angle * 100);
+            gluedBall.GetComponent<Ball>().Launch(angle*100);
             gluedBall = null;
         }
         if (Input.GetMouseButtonDown(0) && currentPaddle == PaddleType.Laser) {
@@ -223,8 +221,8 @@ public class Paddle : MonoBehaviour {
             var p = transform.position;
             for (int i = -1; i <= 1; i += 2) {
                 GameObject bullet =
-                    Instantiate(BulletPrefab, new Vector3(p.x + i * 10, p.y + 1), Quaternion.identity) as GameObject;
-                if (bullet != null) bullet.GetComponent<Rigidbody2D>().velocity = Vector2.up * 200;
+                    Instantiate(BulletPrefab, new Vector3(p.x + i*10, p.y + 1), Quaternion.identity) as GameObject;
+                if (bullet != null) bullet.GetComponent<Rigidbody2D>().velocity = Vector2.up*200;
             }
         }
     }
