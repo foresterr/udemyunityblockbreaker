@@ -18,8 +18,10 @@ public class LevelManager : MonoBehaviour {
             Application.Quit();
         }
         if (PauseScreen && Input.GetKeyDown(KeyCode.Space)) {
-            Time.timeScale = Paused ? 1 : 0;
             Paused = !Paused;
+            Time.timeScale = Paused ? 0 : 1;
+            Cursor.visible = Paused;
+            Cursor.lockState = Paused ? CursorLockMode.None : CursorLockMode.Confined;
             PauseScreen.SetActive(Paused);
         }
     }
@@ -63,5 +65,12 @@ public class LevelManager : MonoBehaviour {
 
     public void Instructions() {
         SceneManager.LoadScene("Screen_help");
+    }
+
+    public void OnLevelWasLoaded(int level) {
+        if (level == 12 || level == 13) {
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+        }
     }
 }

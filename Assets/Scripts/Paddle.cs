@@ -1,14 +1,30 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
+using UnityEngine;
 
 public class Paddle : MonoBehaviour {
     public static int ExtraLives = 2;
     public GameObject BallPrefab;
-    public GameObject GuardBlockPrefab;
     public GameObject BulletPrefab;
-    public Sprite[] StickyAnim;
+    public GameObject GuardBlockPrefab;
     public Sprite[] LaserAnim;
+    public Sprite[] StickyAnim;
     public Sprite[] WideAnim;
+
+    private LevelManager levelMgr;
+    private Camera mainCam;
+    private SfxManager sfxPlayer;
+    private GameObject[] guardBlocks = new GameObject[13];
+    private GameObject gluedBall;
+
+    private PaddleType currentPaddle = PaddleType.Normal;
+    private IEnumerator scheduledApplyPaddleType;
+    private float bonusTimer;
+    private bool interruptBonusTimer;
+    private bool isAnimPlaying;
+
+    public bool HasBall {
+        get { return gluedBall; }
+    }
 
     private enum PaddleType {
         Normal,
@@ -18,29 +34,19 @@ public class Paddle : MonoBehaviour {
         Wide
     }
 
-    private PaddleType currentPaddle = PaddleType.Normal;
-    private bool isAnimPlaying;
-    private GameObject gluedBall;
-    private Camera mainCam;
-    private Sprite[] currentAnim;
-    private GameObject[] guardBlocks = new GameObject[13];
-    private SfxManager player;
-    private LevelManager levelMgr;
-
-    public bool HasBall {
-        get { return gluedBall; }
+    private void OnTriggerEnter2D(Collider2D collision) {
+        var capsule = collision.gameObject.GetComponent<Capsule>();
+        if (capsule) {
+            ApplyBonus(capsule.CapsuleBonus.Name);
+            Destroy(collision.gameObject);
+        }
     }
 
     private void ApplyBonus(string bonusName) {
-        player.Transform();
+        sfxPlayer.Transform();
         switch (bonusName) {
             case "sticky":
-                if (currentPaddle != PaddleType.Sticky) {
-                    currentPaddle = PaddleType.Sticky;
-                    GetComponent<SpriteRenderer>().color = Color.white;
-                    ChangeAnim(StickyAnim);
-                    StartCoroutine(BonusTimeLimit(30, currentPaddle));
-                }
+                scheduledApplyPaddleType = ApplyPaddleType(PaddleType.Sticky, 30, Color.white, StickyAnim);
                 break;
             case "split":
                 var ballsToSplit = GameObject.FindGameObjectsWithTag("ball");
@@ -52,43 +58,84 @@ public class Paddle : MonoBehaviour {
                 ++ExtraLives;
                 break;
             case "extend":
-                if (currentPaddle != PaddleType.Wide) {
-                    currentPaddle = PaddleType.Wide;
-                    GetComponent<SpriteRenderer>().color = Color.white;
-                    ChangeAnim(WideAnim);
-                    StartCoroutine(BonusTimeLimit(60, currentPaddle));
-                }
+                scheduledApplyPaddleType = ApplyPaddleType(PaddleType.Wide, 45, Color.white, WideAnim);
                 break;
             case "eraser":
                 var ballsToEraser = GameObject.FindGameObjectsWithTag("ball");
                 foreach (var b in ballsToEraser) {
-                    //Debug.Log(b.bonusName);
                     b.GetComponent<Ball>().EnableEraser();
                 }
                 break;
             case "laser":
-                if (currentPaddle != PaddleType.Laser) {
-                    currentPaddle = PaddleType.Laser;
-                    GetComponent<SpriteRenderer>().color = Color.white;
-                    ChangeAnim(LaserAnim);
-                    StartCoroutine(BonusTimeLimit(15, currentPaddle));
-                }
+                scheduledApplyPaddleType = ApplyPaddleType(PaddleType.Laser, 20, Color.white, LaserAnim);
                 break;
             case "launcher":
-                if (currentPaddle != PaddleType.Launcher) {
-                    if (currentPaddle != PaddleType.Normal) {
-                        PlayQueue(currentAnim, true);
-                        currentAnim = null;
-                    }
-                    currentPaddle = PaddleType.Launcher;
-                    GetComponent<SpriteRenderer>().color = Color.yellow;
-                    StartCoroutine(BonusTimeLimit(3, currentPaddle));
-                }
+                scheduledApplyPaddleType = ApplyPaddleType(PaddleType.Launcher, 3, Color.yellow, null);
                 break;
             case "shield":
                 StartCoroutine(RebuildShield());
                 break;
         }
+        if (scheduledApplyPaddleType != null && !isAnimPlaying) {
+            //ignore capsule pickups that change paddle type mid - animation
+            StartCoroutine(scheduledApplyPaddleType);
+        }
+    }
+
+    private IEnumerator ApplyPaddleType(PaddleType paddle, float duration, Color color, Sprite[] anim) {
+        scheduledApplyPaddleType = null;
+        if (currentPaddle == paddle) {
+            bonusTimer = duration;
+            yield break;
+        }
+        if (currentPaddle != PaddleType.Normal) {
+            interruptBonusTimer = true;
+            while (currentPaddle != PaddleType.Normal) {
+                yield return null;
+            }
+        }
+        if (anim != null) {
+            yield return StartCoroutine(PlayBonusAnim(anim, 0.3f, reverse: false));
+        }
+        GetComponent<SpriteRenderer>().color = color;
+        currentPaddle = paddle;
+        bonusTimer = duration;
+        StartCoroutine(StartBonusClock(duration));
+        while (bonusTimer > 0) {
+            yield return null;
+        }
+        if (anim != null) {
+            yield return StartCoroutine(PlayBonusAnim(anim, 0.3f, reverse: true));
+        }
+        GetComponent<SpriteRenderer>().color = Color.white;
+        currentPaddle = PaddleType.Normal;
+    }
+
+    private IEnumerator StartBonusClock(float duration) {
+        while (bonusTimer >= 0) {
+            if (interruptBonusTimer) {
+                bonusTimer = 0;
+                interruptBonusTimer = false;
+                yield break;
+            }
+            bonusTimer -= Time.deltaTime;
+            yield return null;
+        }
+    }
+
+    public void EndCurrentBonus() {
+        interruptBonusTimer = true;
+    }
+
+    private IEnumerator PlayBonusAnim(Sprite[] anim, float duration, bool reverse) {
+        isAnimPlaying = true;
+        var s = GetComponent<SpriteRenderer>();
+        for (int i = 0; i < anim.Length; i++) {
+            s.sprite = anim[reverse ? anim.Length - 1 - i : i];
+            GetComponent<BoxCollider2D>().size = s.sprite.bounds.size;
+            yield return new WaitForSeconds(duration / anim.Length);
+        }
+        isAnimPlaying = false;
     }
 
     private IEnumerator RebuildShield() {
@@ -102,59 +149,45 @@ public class Paddle : MonoBehaviour {
         }
     }
 
-    private IEnumerator BonusTimeLimit(float duration, PaddleType bonusToEnd) {
-        yield return new WaitForSeconds(duration);
-        GetComponent<SpriteRenderer>().color = Color.white;
-        if (currentPaddle == bonusToEnd) {
-            currentPaddle = PaddleType.Normal;
-            if (currentAnim != null) {
-                PlayQueue(currentAnim, true);
-                currentAnim = null;
+    private void OnCollisionEnter2D(Collision2D collision) {
+        if (collision.gameObject.GetComponent<Ball>()) {
+            if (!gluedBall && currentPaddle == PaddleType.Sticky) {
+                Capture(collision);
+            } else {
+                Deflect(collision);
             }
         }
     }
 
-    private void ChangeAnim(Sprite[] anim) {
-        if (currentAnim != null) {
-            PlayQueue(currentAnim, true);
-        }
-        currentAnim = anim;
-        PlayQueue(currentAnim, false);
+    private void Capture(Collision2D coll) {
+        coll.collider.isTrigger = true;
+        coll.collider.enabled = false;
+        coll.rigidbody.velocity = Vector2.zero;
+        coll.gameObject.transform.position = transform.position;
+        coll.gameObject.transform.SetParent(transform);
+        gluedBall = coll.gameObject;
     }
 
-    public void PlayQueue(Sprite[] anim, bool reverse) {
-        StartCoroutine(PlayAnimCoroutine(anim, 0.3f, reverse));
-    }
-
-    private IEnumerator PlayAnimCoroutine(Sprite[] anim, float duration, bool reverse) {
-        while (isAnimPlaying) {
-            yield return null;
+    private void Deflect(Collision2D coll) {
+        var vm = coll.rigidbody.velocity.magnitude;
+        var maxDist = 0.99f * GetComponent<Collider2D>().bounds.extents.x;
+        var xDist = transform.position.x - coll.transform.position.x;
+        var yDist = transform.position.y - coll.transform.position.y;
+        if (Mathf.Abs(xDist) <= maxDist && yDist < 2) {
+            var angle = Mathf.Clamp(xDist / maxDist * 90 + 90, 10, 170);
+            //always deflect at at least 10 deg, lower angles are boring
+            var newV = new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad));
+            newV *= vm;
+            coll.rigidbody.velocity = newV;
         }
-        isAnimPlaying = true;
-        var s = GetComponent<SpriteRenderer>();
-        for (int i = 0; i < anim.Length; i++) {
-            s.sprite = anim[reverse ? (anim.Length - 1 - i) : i];
-            GetComponent<BoxCollider2D>().size = s.sprite.bounds.size;
-            yield return new WaitForSeconds(duration / anim.Length);
-        }
-        isAnimPlaying = false;
     }
 
     private void Start() {
-        player = FindObjectOfType<SfxManager>();
+        sfxPlayer = FindObjectOfType<SfxManager>();
         levelMgr = FindObjectOfType<LevelManager>();
         mainCam = Camera.main;
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Confined;
-        //ApplyBonus("Laser");
-    }
-
-    private void SpawnBall() {
-        gluedBall = Instantiate(BallPrefab, transform.position, Quaternion.identity) as GameObject;
-        if (gluedBall != null) {
-            gluedBall.transform.SetParent(transform);
-            gluedBall.GetComponent<SpriteRenderer>().sortingOrder = 1;
-        }
     }
 
     private void Update() {
@@ -162,13 +195,12 @@ public class Paddle : MonoBehaviour {
         PositionOnMouseX(4);
         if (!HasBall) {
             if (Ball.BallsOnScreen == 0) {
-                if (currentAnim != null) {
-                    PlayQueue(currentAnim, true);
-                    currentAnim = null;
-                    currentPaddle = PaddleType.Normal;
+                bonusTimer = 0;
+                foreach (var capsule in FindObjectsOfType<Capsule>()) {
+                    Destroy(capsule.gameObject);
                 }
                 SpawnBall();
-            } else if (currentPaddle == PaddleType.Launcher && Ball.BallsOnScreen < 16) {
+            } else if (currentPaddle == PaddleType.Launcher && Ball.BallsOnScreen < 13) {
                 SpawnBall();
             }
         }
@@ -188,7 +220,7 @@ public class Paddle : MonoBehaviour {
             gluedBall = null;
         }
         if (Input.GetMouseButtonDown(0) && currentPaddle == PaddleType.Laser) {
-            player.Shoot();
+            sfxPlayer.Shoot();
             var p = transform.position;
             for (int i = -1; i <= 1; i += 2) {
                 GameObject bullet =
@@ -206,44 +238,12 @@ public class Paddle : MonoBehaviour {
         transform.position = new Vector3(mouseToWorldX, transform.position.y, transform.position.z);
     }
 
-    private void OnCollisionEnter2D(Collision2D collision) {
-        if (collision.gameObject.GetComponent<Ball>()) {
-            if (!gluedBall && currentPaddle == PaddleType.Sticky) {
-                Capture(collision);
-            } else {
-                Deflect(collision);
-            }
+    private void SpawnBall() {
+        gluedBall = Instantiate(BallPrefab, transform.position, Quaternion.identity) as GameObject;
+        if (gluedBall != null) {
+            gluedBall.transform.SetParent(transform);
+            gluedBall.GetComponent<Collider2D>().enabled = false;
+            gluedBall.GetComponent<SpriteRenderer>().sortingOrder = 1;
         }
-    }
-
-    private void OnTriggerEnter2D(Collider2D collision) {
-        var capsule = collision.gameObject.GetComponent<Capsule>();
-        if (capsule) {
-            //Debug.Log(capsule.CapsuleBonus.Name);
-            ApplyBonus(capsule.CapsuleBonus.Name);
-            Destroy(collision.gameObject);
-        }
-    }
-
-    private void Deflect(Collision2D coll) {
-        var vm = coll.rigidbody.velocity.magnitude;
-        var maxDist = 0.99f * (GetComponent<Collider2D>().bounds.extents.x);
-        var xDist = transform.position.x - coll.transform.position.x;
-        var yDist = transform.position.y - coll.transform.position.y;
-        if (Mathf.Abs(xDist) <= maxDist && yDist < 2) {
-            var angle = Mathf.Clamp(xDist / maxDist * 90 + 90, 10, 170);
-            //always deflect at at least 10 deg, lower angles are boring
-            var newV = new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad));
-            newV *= vm;
-            coll.rigidbody.velocity = newV;
-        }
-    }
-
-    private void Capture(Collision2D coll) {
-        coll.collider.isTrigger = true;
-        coll.rigidbody.velocity = Vector2.zero;
-        coll.gameObject.transform.position = transform.position;
-        coll.gameObject.transform.SetParent(transform);
-        gluedBall = coll.gameObject;
     }
 }

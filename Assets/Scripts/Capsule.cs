@@ -28,11 +28,29 @@ public class BonusType {
         new BonusType() {Name = "launcher", Color = Color.yellow, IsRare = true},
         new BonusType() {Name = "shield", Color = Color.gray, IsRare = true},
         new BonusType() {Name = "life", Color = Color.black, IsRare = true}
+        //testing only from here
+        //new BonusType() { Name = "laser", Color = Color.magenta, IsRare = true},
+        //new BonusType() { Name = "launcher", Color = Color.yellow, IsRare = true},
+        //new BonusType() { Name = "sticky", Color = Color.green, IsRare = false},
+        //new BonusType() { Name = "extend", Color = Color.blue, IsRare = false}
     };
 
     public static BonusType[] Common = {
         new BonusType() {Name = "sticky", Color = Color.green, IsRare = false},
         new BonusType() {Name = "split", Color = Color.cyan, IsRare = false},
         new BonusType() {Name = "extend", Color = Color.blue, IsRare = false}
+        //testing only from here
+        //new BonusType() { Name = "laser", Color = Color.magenta, IsRare = true},
+        //new BonusType() { Name = "launcher", Color = Color.yellow, IsRare = true},
+        //new BonusType() { Name = "sticky", Color = Color.green, IsRare = false},
+        //new BonusType() { Name = "extend", Color = Color.blue, IsRare = false}
     };
+
+    //just paddlemods for testing
+    /*
+    new BonusType() { Name = "laser", Color = Color.magenta, IsRare = true},
+    new BonusType() { Name = "launcher", Color = Color.yellow, IsRare = true},
+    new BonusType() { Name = "sticky", Color = Color.green, IsRare = false},
+    new BonusType() { Name = "extend", Color = Color.blue, IsRare = false}
+    */
 }

@@ -23,9 +23,18 @@ public class Ball : MonoBehaviour {
         GetComponent<Rigidbody2D>().velocity = lastVelocity;
     }
 
+    private void OutOfBoundsCheck() {
+        var p = transform.position;
+        if (p.x > 320 || p.x < 0 || p.y > 240 || p.y < -10) {
+            --BallsOnScreen;
+            Destroy(gameObject);
+        }
+    }
+
     private void Update() {
         //if(Input.GetKeyDown("space")) Split();
         ResetLowSpeedAndAngle(100, 5);
+        OutOfBoundsCheck();
     }
 
     private void ResetLowSpeedAndAngle(float speedMag, float angle) {
@@ -45,7 +54,7 @@ public class Ball : MonoBehaviour {
             player.Boing();
         }
         var v = GetComponent<Rigidbody2D>().velocity;
-        GetComponent<Rigidbody2D>().velocity = v.normalized * (v.magnitude + 1); //linear speed increase
+        GetComponent<Rigidbody2D>().velocity = Vector2.ClampMagnitude(v.normalized * (v.magnitude + 0.75f), 250); //linear speed increase and limit
     }
 
     public void OnTriggerExit2D(Collider2D collision) {
@@ -56,12 +65,13 @@ public class Ball : MonoBehaviour {
 
     public void Launch(Vector2 speed) {
         transform.SetParent(null, true);
+        GetComponent<Collider2D>().enabled = true;
         GetComponent<Rigidbody2D>().velocity = speed;
         player.Boing();
     }
 
     public void Split() {
-        if (BallsOnScreen < 16 && GetComponent<Rigidbody2D>().velocity.magnitude >= 80) {
+        if (BallsOnScreen < 13 && GetComponent<Rigidbody2D>().velocity.magnitude >= 80) {
             for (int i = -1; i < 2; i += 2) {
                 GameObject ball = Instantiate(gameObject, transform.position, Quaternion.identity) as GameObject;
                 if (ball != null) {
@@ -83,7 +93,7 @@ public class Ball : MonoBehaviour {
     }
 
     private IEnumerator EraserTimeLimit() {
-        yield return new WaitForSeconds(10);
+        yield return new WaitForSeconds(8);
         GetComponent<SpriteRenderer>().color = Color.white;
         IsEraser = false;
     }

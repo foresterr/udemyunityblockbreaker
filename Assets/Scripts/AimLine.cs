@@ -10,7 +10,7 @@ public class AimLine : MonoBehaviour {
 
     public void StartSweep() {
         var len = GetComponentInChildren<Camera>().targetTexture.height;
-        StartCoroutine(Sweep(160, Random.Range(10, 170), len, 1));
+        StartCoroutine(Sweep(160, Random.Range(10, 170), len, 2));
     }
 
     private IEnumerator Sweep(int range, int initialAngle, float length, float duration) {
