@@ -71,7 +71,7 @@ public class Ball : MonoBehaviour {
     }
 
     public void Split() {
-        if (BallsOnScreen < 13 && GetComponent<Rigidbody2D>().velocity.magnitude >= 80) {
+        if (BallsOnScreen < 13 && gameObject.GetComponent<Collider2D>().enabled) {
             for (int i = -1; i < 2; i += 2) {
                 GameObject ball = Instantiate(gameObject, transform.position, Quaternion.identity) as GameObject;
                 if (ball != null) {

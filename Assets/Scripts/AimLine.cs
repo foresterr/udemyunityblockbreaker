@@ -2,18 +2,22 @@
 using System.Collections;
 
 public class AimLine : MonoBehaviour {
-    private Vector2 currentAngle;
+    private Vector2 currentAngle = Vector2.one.normalized;
+    private bool isSweeping;
 
     public Vector2 CurrentAngle {
         get { return currentAngle; }
     }
 
     public void StartSweep() {
-        var len = GetComponentInChildren<Camera>().targetTexture.height;
-        StartCoroutine(Sweep(160, Random.Range(10, 170), len, 2));
+        if (!isSweeping) {
+            var len = GetComponentInChildren<Camera>().targetTexture.height;
+            StartCoroutine(Sweep(160, Random.Range(10, 170), len, 2)); 
+        }
     }
 
     private IEnumerator Sweep(int range, int initialAngle, float length, float duration) {
+        isSweeping = true;
         var lr = GetComponent<LineRenderer>();
         lr.enabled = true;
         var deg = initialAngle;
@@ -31,6 +35,7 @@ public class AimLine : MonoBehaviour {
         }
         lr.enabled = false;
         DrawPixelized();
+        isSweeping = false;
     }
 
     private void DrawPixelized() {

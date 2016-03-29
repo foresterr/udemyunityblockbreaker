@@ -84,6 +84,7 @@ public class Paddle : MonoBehaviour {
 
     private IEnumerator ApplyPaddleType(PaddleType paddle, float duration, Color color, Sprite[] anim) {
         scheduledApplyPaddleType = null;
+        //print("Entering bonus coroutine, interrupt status is "+interruptBonusTimer);
         if (currentPaddle == paddle) {
             bonusTimer = duration;
             yield break;
@@ -112,8 +113,10 @@ public class Paddle : MonoBehaviour {
     }
 
     private IEnumerator StartBonusClock(float duration) {
+        //print("Starting bonus timer with duration "+duration);
         while (bonusTimer >= 0) {
             if (interruptBonusTimer) {
+                print("Bonus interrupted");
                 bonusTimer = 0;
                 interruptBonusTimer = false;
                 yield break;
@@ -123,7 +126,7 @@ public class Paddle : MonoBehaviour {
         }
     }
 
-    public void EndCurrentBonus() {
+    public void InterruptBonus() {
         interruptBonusTimer = true;
     }
 
@@ -195,17 +198,13 @@ public class Paddle : MonoBehaviour {
         PositionOnMouseX(4);
         if (!HasBall) {
             if (Ball.BallsOnScreen == 0) {
-                bonusTimer = 0;
-                foreach (var capsule in FindObjectsOfType<Capsule>()) {
-                    Destroy(capsule.gameObject);
-                }
                 SpawnBall();
             } else if (currentPaddle == PaddleType.Launcher && Ball.BallsOnScreen < 13) {
                 SpawnBall();
             }
         }
         var aimLine = GetComponentInChildren<AimLine>();
-        if (Input.GetMouseButtonDown(0) && currentPaddle != PaddleType.Launcher && HasBall) {
+        if (Input.GetMouseButton(0) && currentPaddle != PaddleType.Launcher && HasBall) {
             aimLine.StartSweep();
         }
         if (Input.GetMouseButtonUp(0) && HasBall) {
