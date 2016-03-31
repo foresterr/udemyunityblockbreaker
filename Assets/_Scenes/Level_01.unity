@@ -147,7 +147,7 @@ Prefab:
 Transform:
   m_PrefabParentObject: {fileID: 441378, guid: 5aac947238473894f853ecdf162c8282, type: 2}
   m_PrefabInternal: {fileID: 19066320}
---- !u!1001 &25424581
+--- !u!1001 &27874649
 Prefab:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -186,11 +186,6 @@ Prefab:
       propertyPath: m_RootOrder
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 21298042, guid: f548b194b6bd73c4dbae213691b15287, type: 2}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 21300000, guid: 7bca3f18d45842040b9a3ee26da6e6e0,
-        type: 3}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: f548b194b6bd73c4dbae213691b15287, type: 2}
   m_IsPrefabParent: 0

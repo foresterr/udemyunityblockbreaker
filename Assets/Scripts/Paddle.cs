@@ -117,6 +117,7 @@ public class Paddle : MonoBehaviour {
             duration -= Time.deltaTime;
             yield return null;
         }
+        interruptBonusTimer = false; //in case a timer scheduled to be interrupted ended by itself before interruption could occur
         bonusTimerRunning = false;
     }
 
@@ -181,6 +182,7 @@ public class Paddle : MonoBehaviour {
     private void Start() {
         sfxPlayer = FindObjectOfType<SfxManager>();
         levelMgr = FindObjectOfType<LevelManager>();
+        scheduledApplyPaddleType = null;
         mainCam = Camera.main;
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Confined;
@@ -229,9 +231,10 @@ public class Paddle : MonoBehaviour {
 
     private void PositionOnMouseX(float margin) {
         var mouseWorldPos = mainCam.ScreenToWorldPoint(Input.mousePosition);
-        var worldMaxPos = mainCam.ScreenToWorldPoint(new Vector3(mainCam.pixelWidth, mainCam.pixelHeight, 0));
+        //does not work with fullscreen on webplayer :/
+        //var worldMaxPos = mainCam.ScreenToWorldPoint(new Vector3(mainCam.pixelWidth, mainCam.pixelHeight, 0));
         var xLimit = margin + GetComponent<SpriteRenderer>().sprite.bounds.extents.x;
-        var mouseToWorldX = Mathf.Clamp(mouseWorldPos.x, xLimit, worldMaxPos.x - xLimit);
+        var mouseToWorldX = Mathf.Clamp(mouseWorldPos.x, xLimit, 320 - xLimit);
         transform.position = new Vector3(mouseToWorldX, transform.position.y, transform.position.z);
     }
 

@@ -15,8 +15,8 @@ PlayerSettings:
   cursorHotspot: {x: 0, y: 0}
   m_ShowUnitySplashScreen: 1
   m_VirtualRealitySplashScreen: {fileID: 0}
-  defaultScreenWidth: 1280
-  defaultScreenHeight: 960
+  defaultScreenWidth: 960
+  defaultScreenHeight: 720
   defaultScreenWidthWeb: 960
   defaultScreenHeightWeb: 720
   m_RenderingPath: 1
@@ -85,9 +85,9 @@ PlayerSettings:
   wiiUControllerCount: 0
   m_SupportedAspectRatios:
     4:3: 1
-    5:4: 0
-    16:10: 0
-    16:9: 0
+    5:4: 1
+    16:10: 1
+    16:9: 1
     Others: 0
   bundleIdentifier: com.Company.ProductName
   bundleVersion: 1.0
@@ -363,8 +363,8 @@ PlayerSettings:
   spritePackerPolicy: 
   scriptingDefineSymbols:
     1: 
-    2: Column
-    13: Column
+    2: 
+    13: 
   metroPackageName: BlockBreaker
   metroPackageVersion: 
   metroCertificatePath: 
